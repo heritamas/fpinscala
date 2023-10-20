@@ -130,16 +130,44 @@ object List: // `List` companion object. Contains functions for creating and wor
   def doubleToString(l: List[Double]): List[String] =
     foldRight(l, Nil: List[String], (d, l) => Cons(d.toString, l) )
 
-  def map[A,B](l: List[A], f: A => B): List[B] = ???
+  def map[A,B](l: List[A], f: A => B): List[B] =
+    foldRight(l, Nil: List[B], (e, l) => Cons(f(e), l))
 
-  def filter[A](as: List[A], f: A => Boolean): List[A] = ???
+  def filter[A](as: List[A], f: A => Boolean): List[A] =
+    foldRight(as, Nil : List[A], (e, l) => if f(e) then Cons(e, l) else l)
 
-  def flatMap[A,B](as: List[A], f: A => List[B]): List[B] = ???
+  def flatMap1[A,B](as: List[A], f: A => List[B]): List[B] =
+    foldRight(as, Nil: List[B], (a, l) => append(f(a), l))
 
-  def filterViaFlatMap[A](as: List[A], f: A => Boolean): List[A] = ???
+  def flatMap[A,B](as: List[A], f: A => List[B]): List[B] =
+    concat(map(as, f))
 
-  def addPairwise(a: List[Int], b: List[Int]): List[Int] = ???
+  def filterViaFlatMap[A](as: List[A], f: A => Boolean): List[A] =
+    flatMap(as, a => if f(a) then List(a) else Nil)
 
-  // def zipWith - TODO determine signature
 
-  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = ???
+  def addPairwise(a: List[Int], b: List[Int]): List[Int] = (a, b) match
+    case (_, Nil) => Nil
+    case (Nil, _) => Nil
+    case (Cons(a0, as), Cons(b0, bs)) => Cons(a0+b0, addPairwise(as, bs))
+
+  def zipWith[A, B, C](a : List[A], b: List[B], combine: (A, B) => C) : List[C] = (a, b) match
+    case (_, Nil) => Nil
+    case (Nil, _) => Nil
+    case (Cons(a0, as), Cons(b0, bs)) => Cons(combine(a0, b0), zipWith(as, bs, combine))
+
+  def hasSubsequence1[A](sup: List[A], sub: List[A]): Boolean = (sup, sub) match
+    case (_, Nil) => true
+    case (Cons(s0, ss), Cons(u0, us)) => if s0 == u0 then hasSubsequence(ss, us) else hasSubsequence(ss, sub)
+    case (Nil, _) => sub == Nil
+
+
+  def startsWith[A](l : List[A], prefix: List[A]) : Boolean = (l, prefix) match
+    case (_, Nil) => true
+    case (Cons(l0, ls), Cons(p0, ps)) if l0 == p0 => startsWith(ls, ps)
+    case _ => false
+
+  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = sup match
+    case Nil => sub == Nil
+    case _ if startsWith(sup, sub) => true
+    case Cons(h, t) => hasSubsequence(t, sub)
