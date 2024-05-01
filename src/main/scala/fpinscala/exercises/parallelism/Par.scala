@@ -56,6 +56,11 @@ object Par:
   extension [A](pa: Par[A]) def map[B](f: A => B): Par[B] =
     pa.map2(unit(()))((a, _) => f(a))
 
+  extension [A](pa: Par[A]) def mymap[B](f: A => B): Par[B] =
+    es =>
+      val a = pa(es).get
+      UnitFuture(f(a))
+
   def sortPar(parList: Par[List[Int]]) =
     parList.map(_.sorted)
 
