@@ -41,6 +41,7 @@ object Gen:
 
 
 /*
+
 trait Gen[A]:
   def map[B](f: A => B): Gen[B] = ???
   def flatMap[B](f: A => Gen[B]): Gen[B] = ???
