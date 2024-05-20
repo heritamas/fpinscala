@@ -133,7 +133,7 @@ object State:
 
   def apply[S, A](f: S => (A, S)): State[S, A] = f
 
-  def unit[S, A](a: A): State[S, A] =
+  def unit[S, A](a: => A): State[S, A] =
     s => (a, s)
 
   def derived[S, A](f: S => A): State[S, A] =
