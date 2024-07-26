@@ -170,3 +170,6 @@ class MonoidSuite extends PropSuite:
     assertEquals(m.combine(a, m.combine(b, c)), m.combine(m.combine(a, b), c), "associativity")
     assertEquals(m.combine(a, m.empty), a, "identity")
     assertEquals(m.combine(m.empty, a), a, "identity")
+
+object MonoidSuite:
+  ???
