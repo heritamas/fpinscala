@@ -7,6 +7,19 @@ trait Parsers[Parser[+_]]:
 
   object Laws
 
+
+object SimpleParser extends Parsers[SimpleParser.Parser] {
+
+  enum Result[+A]:
+    case Success(get: A, length: Int)
+    case Failure(get: ParseError, isCommitted: Boolean) extends Result[Nothing]
+
+  type Parser[+A] = Location => Result[A]
+
+}
+
+
+
 case class Location(input: String, offset: Int = 0):
 
   lazy val line = input.slice(0,offset+1).count(_ == '\n') + 1
