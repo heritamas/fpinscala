@@ -110,7 +110,7 @@ trait Parsers[Parser[+_]]:
       * We wrap the ignored half in slice, since we don't care about its result.
       */
     def <*(p2: => Parser[Any]) =
-      p.map2(p2.slice)((a, b) => a)
+      p.map2(p2)((a, b) => a)
 
     /** Attempts `p` and strips trailing whitespace, usually used for the tokens of a grammar. */
     def token: Parser[A] = p.attempt <* whitespace
