@@ -30,7 +30,7 @@ trait Monad[F[_]] extends Functor[F]:
   extension [A](fa: F[A])
     def flatMap[B](f: A => F[B]): F[B] =
       fa.map(f).join
-    
+
     def map[B](f: A => B): F[B] =
       fa.flatMap(a => unit(f(a)))
 
@@ -38,13 +38,15 @@ trait Monad[F[_]] extends Functor[F]:
       fa.flatMap(a => fb.map(b => f(a, b)))
 
   def sequence[A](fas: List[F[A]]): F[List[A]] =
-    ???
+    traverse(fas)(identity)
+
 
   def traverse[A, B](as: List[A])(f: A => F[B]): F[List[B]] =
-    ???
+    as.foldRight(unit(List.empty[B]))( ( a, acc ) => f(a).map2(acc)(_ :: _))
+
 
   def replicateM[A](n: Int, fa: F[A]): F[List[A]] =
-    ???
+    sequence(List.fill(n)(fa))
 
   def compose[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] =
     ???
@@ -53,8 +55,15 @@ trait Monad[F[_]] extends Functor[F]:
     def flatMapViaCompose[B](f: A => F[B]): F[B] =
       ???
 
+  def filterM_[A](as: List[A])(f: A => F[Boolean]): F[List[A]] =
+    val tmp = traverse(as){ a => f(a).flatMap(b => if b then unit(Some(a)) else unit(None)) }
+    tmp.map(la => la.collect{ case Some(a) => a })
+
   def filterM[A](as: List[A])(f: A => F[Boolean]): F[List[A]] =
-    ???
+    as.foldRight(unit(List.empty[A])){
+      (a, acc) => f(a).flatMap(b => if b then unit(a).map2(acc)(_ :: _) else acc)
+    }
+
 
   extension [A](ffa: F[F[A]]) def join: F[A] =
     ???
@@ -66,7 +75,7 @@ trait Monad[F[_]] extends Functor[F]:
   def composeViaJoinAndMap[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] =
     ???
 
-end Monad      
+end Monad
 
 object Monad:
   given genMonad: Monad[Gen] with
@@ -76,34 +85,35 @@ object Monad:
         Gen.flatMap(fa)(f)
 
   given parMonad: Monad[Par] with
-    def unit[A](a: => A) = ???
+    def unit[A](a: => A) = Par.unit(a)
     extension [A](fa: Par[A])
       override def flatMap[B](f: A => Par[B]): Par[B] =
-        ???
+        Par.flatMap(fa)(f)
 
   def parserMonad[P[+_]](p: Parsers[P]): Monad[P] = new:
-    def unit[A](a: => A) = ???
+    def unit[A](a: => A) = p.succeed(a)
     extension [A](fa: P[A])
       override def flatMap[B](f: A => P[B]): P[B] =
-        ???
+        p.flatMap(fa)(f)
+
 
   given optionMonad: Monad[Option] with
-    def unit[A](a: => A) = ???
+    def unit[A](a: => A) = Some(a)
     extension [A](fa: Option[A])
       override def flatMap[B](f: A => Option[B]) =
-        ???
+        fa.flatMap(f)
 
   given lazyListMonad: Monad[LazyList] with
-    def unit[A](a: => A) = ???
+    def unit[A](a: => A) = LazyList(a)
     extension [A](fa: LazyList[A])
       override def flatMap[B](f: A => LazyList[B]) =
-        ???
+        fa.flatMap(f)
 
   given listMonad: Monad[List] with
-    def unit[A](a: => A) = ???
+    def unit[A](a: => A) = List(a)
     extension [A](fa: List[A])
       override def flatMap[B](f: A => List[B]) =
-        ???
+        fa.flatMap(f)
 
 end Monad
 
