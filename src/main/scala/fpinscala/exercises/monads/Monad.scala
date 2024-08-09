@@ -49,11 +49,16 @@ trait Monad[F[_]] extends Functor[F]:
     sequence(List.fill(n)(fa))
 
   def compose[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] =
-    ???
+    a =>
+      for
+        b <- f(a)
+        c <- g(b)
+      yield
+        c
 
   extension [A](fa: F[A])
     def flatMapViaCompose[B](f: A => F[B]): F[B] =
-      ???
+      compose(_ => fa, f)(None)
 
   def filterM_[A](as: List[A])(f: A => F[Boolean]): F[List[A]] =
     val tmp = traverse(as){ a => f(a).flatMap(b => if b then unit(Some(a)) else unit(None)) }
@@ -65,15 +70,16 @@ trait Monad[F[_]] extends Functor[F]:
     }
 
 
-  extension [A](ffa: F[F[A]]) def join: F[A] =
-    ???
+  extension [A](ffa: F[F[A]])
+    def join: F[A] =
+      ffa.flatMap(identity)
 
   extension [A](fa: F[A])
     def flatMapViaJoinAndMap[B](f: A => F[B]): F[B] =
-      ???
+      fa.map(f).join
 
   def composeViaJoinAndMap[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] =
-    ???
+    a => f(a).map(g).join
 
 end Monad
 
@@ -119,16 +125,16 @@ end Monad
 
 case class Id[+A](value: A):
   def map[B](f: A => B): Id[B] =
-    ???
+    Id(f(value))
   def flatMap[B](f: A => Id[B]): Id[B] =
-    ???
+    f(value)
 
 object Id:
   given idMonad: Monad[Id] with
-    def unit[A](a: => A) = ???
+    def unit[A](a: => A) = Id(a)
     extension [A](fa: Id[A])
       override def flatMap[B](f: A => Id[B]) =
-        ???
+        fa.flatMap(f)
 
 opaque type Reader[-R, +A] = R => A
 
@@ -137,7 +143,7 @@ object Reader:
     def run(r: R): A = ra(r)
 
   given readerMonad[R]: Monad[Reader[R, _]] with
-    def unit[A](a: => A): Reader[R, A] = ???
+    def unit[A](a: => A): Reader[R, A] = _ => a
     extension [A](fa: Reader[R, A])
       override def flatMap[B](f: A => Reader[R, B]) =
-        ???
+        r => f(fa(r))(r)
