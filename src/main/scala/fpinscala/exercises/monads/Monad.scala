@@ -7,6 +7,8 @@ import parallelism.*
 import state.*
 import parallelism.Par.*
 
+import scala.collection.mutable.ListBuffer
+
 trait Functor[F[_]]:
   extension [A](fa: F[A])
     def map[B](f: A => B): F[B]
@@ -131,10 +133,60 @@ case class Id[+A](value: A):
 
 object Id:
   given idMonad: Monad[Id] with
-    def unit[A](a: => A) = Id(a)
+    def unit[A](a: => A): Id[A] = Id(a)
     extension [A](fa: Id[A])
-      override def flatMap[B](f: A => Id[B]) =
+      override def flatMap[B](f: A => Id[B]): Id[B] =
         fa.flatMap(f)
+
+
+opaque type State[S, +A] = S => (A, S)
+
+object State:
+  def modify[S](f: S => S): State[S, Unit] = s => ((), f(s))
+  def get[S]: State[S, S] = s => (s, s)
+  def set[S](s: => S): State[S, Unit] = _ => ((), s)
+
+  /*
+  extension [S, A](underlying: State[S, A])
+    def map[B](f: A => B): State[S, B] =
+      flatMap(a => s => (f(a), s))
+
+    def flatMap[B](f: A => State[S, B]): State[S, B] =
+      s =>
+        val (a, s1) = underlying(s)
+        f(a)(s1)
+  */
+
+  given stateMonad[S]: Monad[[x] =>> State[S, x]] with
+    def unit[A](a: => A): State[S, A] = s => (a, s)
+    extension[A] (st: State[S, A] )
+      override def flatMap[B](f: A => State[S, B]): State[S, B] =
+        s =>
+          val (a, s1) = st(s)
+          f(a)(s1)
+        //State.flatMap(st)(f)
+
+def zipWithIndex[A](as: List[A]): List[(A, Int)] =
+  import State.*
+  import State.given
+  val statefulList : ListBuffer[State[Int, (A, Int)]] = ListBuffer.from(as).map {
+    a =>
+      for
+        index <- get
+        _ <- set(index + 1)
+      yield (a, index)
+  }
+
+  val combinedState : State[Int, List[(A, Int)]] =
+    statefulList.foldLeft(stateMonad.unit(List.empty[(A, Int)])) {
+      (acc, state) =>
+        for
+          xs <- acc
+          x <- state
+        yield xs.appended(x)
+    }
+
+  combinedState(0)._1
 
 opaque type Reader[-R, +A] = R => A
 
