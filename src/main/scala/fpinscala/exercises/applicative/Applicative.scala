@@ -45,14 +45,23 @@ trait Applicative[F[_]] extends Functor[F]:
     )(f: (A, B, C, D) => E): F[E] =
       apply(apply(apply(apply(unit(f.curried))(fa))(fb))(fc))(fd)
 
-  def product[G[_]](G: Applicative[G]): Applicative[[x] =>> (F[x], G[x])] =
-    ???
+  def product[G[_]](G: Applicative[G]): Applicative[[x] =>> (F[x], G[x])] = new :
+    def unit[A](a: => A) = (self.unit(a), G.unit(a))
+    override def apply[A, B](fab: (F[A => B], G[A => B]))(p: (F[A], G[A])): (F[B], G[B]) =
+      (self.apply(fab(0))(p(0)), G.apply(fab(1))(p(1)))
+    
+  def compose[G[_]](G: Applicative[G]): Applicative[[x] =>> F[G[x]]] = new:
+    def unit[A](a: => A) = self.unit(G.unit(a))
+    extension [A](fga: F[G[A]])
+      override def map2[B, C](fgb: F[G[B]])(f: (A,B) => C) =
+        self.map2(fga)(fgb)(G.map2(_)(_)(f))
 
-  def compose[G[_]](G: Applicative[G]): Applicative[[x] =>> F[G[x]]] =
-    ???
+    
 
   def sequenceMap[K,V](ofa: Map[K, F[V]]): F[Map[K, V]] =
-    ???
+    ofa.foldLeft(self.unit(Map.empty[K, V])) {
+      case (acc, (k, fv)) => acc.map2(fv)( (mp, v) => mp + (k->v) )
+    }
 
 object Applicative:
   opaque type ZipList[+A] = LazyList[A]
@@ -74,10 +83,16 @@ object Applicative:
   
   object Validated:
     given validatedApplicative[E: Monoid]: Applicative[Validated[E, _]] with
-      def unit[A](a: => A) = ???
+      def unit[A](a: => A) = Valid(a)
       extension [A](fa: Validated[E, A])
         override def map2[B, C](fb: Validated[E, B])(f: (A, B) => C) =
-          ???
+          (fa, fb) match {
+            case (Valid(a), Valid(b)) => Valid(f(a,b))
+            case (Invalid(e1), Invalid(e2)) =>
+              Invalid(summon[Monoid[E]].combine(e1, e2))
+            case (e @ Invalid(_), _) => e
+            case (_, e @ Invalid(_)) => e
+          }
 
   type Const[A, B] = A
 
@@ -91,9 +106,12 @@ object Applicative:
       override def flatMap[B](f: A => Option[B]) = oa.flatMap(f)
 
   given eitherMonad[E]: Monad[Either[E, _]] with
-    def unit[A](a: => A): Either[E, A] = ???
+    def unit[A](a: => A): Either[E, A] = Right(a)
     extension [A](eea: Either[E, A])
-      override def flatMap[B](f: A => Either[E, B]) = ???
+      override def flatMap[B](f: A => Either[E, B]) = eea match {
+        case Left(e) => Left(e)
+        case Right(a) => f(a)
+      }
 
   given stateMonad[S]: Monad[State[S, _]] with
     def unit[A](a: => A): State[S, A] = State(s => (a, s))
