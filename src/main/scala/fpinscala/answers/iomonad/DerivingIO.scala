@@ -156,6 +156,18 @@ object IO1:
   )
 end IO1
 
+object IO1Tests:
+  import IO1.*
+
+  val p = PrintLine("Still going...").forever
+
+  @main def runIO1: Unit =
+    p.unsafeRun
+
+end IO1Tests
+
+
+
 object IO2a:
 
   /*
